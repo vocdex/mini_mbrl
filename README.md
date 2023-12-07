@@ -6,7 +6,7 @@ MiniMBRL is a minimal model-based reinforcement learning framework.
 ## Installation
 
 ```sh
-pip install elements
+pip install mini_mbrl
 ```
 
 ## Features
@@ -17,7 +17,7 @@ MiniMBRL aims to provide minimal implementations of the commonly used model-base
 
 ```python
 from mini_mbrl.controller import Controller
-controller = Controller(algo="mpc_with_CEM", env=env, model=model, **kwargs)
+controller = Controller(algo="mpc_with_cem", env=env, model=model, **kwargs)
 action = controller.get_action(observation)
 ```
 ```
