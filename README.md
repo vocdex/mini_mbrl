@@ -24,11 +24,11 @@ action = controller.get_action(observation)
 Implement the following at this order
 1. Alternating between model learning and planning loop
 2. Gradient-free planning algorithms: Random Shooting, Cross-Entropy Method, iCEM
-3. Closed-loop planning with MPC, and Open-loop 
+3. Closed-loop planning with MPC, and Open-loop
 4. Model learning: deterministic vs probabilistic models, ensembles, uncertainty estimation(aleatoric vs epistemic)
 5. Gradient-based optimization methods.
 
-Papers: 
+Papers:
 - [Neural Network Dynamics for Model-Based Deep Reinforcement Learning with Model-Free Fine-Tuning](https://arxiv.org/pdf/1708.02596.pdf)
 - [Deep Dynamics Models for Learning Dexterous Manipulation](https://proceedings.mlr.press/v100/nagabandi20a/nagabandi20a.pdf)
 - [PILCO: A Model-Based and Data-Efficient Approach to Policy Search](https://mlg.eng.cam.ac.uk/pub/pdf/DeiRas11.pdf)
