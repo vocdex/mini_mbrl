@@ -51,7 +51,7 @@ def sample_trajectory(env, policy, n_steps, is_deterministic: bool, seed: int) -
         rewards.append(reward)
         dones.append(done)
         if done:
-            break
+            env.reset()  # reset the environment if the episode is done. Not sure if this is the right thing to do.
         step += 1
 
     env.close()
