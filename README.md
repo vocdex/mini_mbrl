@@ -2,7 +2,13 @@
 # 🔥 MiniMBRL
 MiniMBRL is a minimal model-based reinforcement learning framework.
 
-## Development details
+# Development details
+## 21.12.2023
+We need to start simple. The goal here is to implement minimally possible MBRL algorithm in one script. Later, we can build on top of it.
+
+
+
+
 We need a policy that can be used to collect data. This policy can be a random policy, or a policy that will be trained with model-based RL. We will use a random policy for now.
 
 Now, since we have a policy, we can collect trajectories and write them to a replay buffer. We will use a simple replay buffer for now.
