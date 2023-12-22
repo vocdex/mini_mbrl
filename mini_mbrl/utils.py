@@ -14,11 +14,10 @@ class OpenLoopPolicy:
     """This should return an action when called with an observation."""
 
     def __init__(self, action_sequence, env: gym.Env):
-        self.action_sequence = action_sequence
-        self.env = env
+        raise NotImplementedError
 
     def get_action(self, obs, state, **kwargs):
-        return self.action_sequence[0]
+        raise NotImplementedError
 
 
 def sample_trajectory(env, policy, n_steps, is_deterministic: bool, seed: int) -> [str, np.ndarray]:
