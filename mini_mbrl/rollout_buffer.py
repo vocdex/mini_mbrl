@@ -21,6 +21,7 @@ def to_torch(x, dtype: torch.dtype, device: torch.device = torch.device("cpu")) 
 class RolloutBuffer:
     def __init__(self, max_size: int = 100000, device: torch.device = torch.device("cpu")):
         super().__init__()
+        # deque is a list-like container with fast appends and pops on either end
         self.buffer = deque(maxlen=max_size)
         self.size = 0
         self.max_size = max_size
@@ -50,9 +51,6 @@ class RolloutBuffer:
             [elem["next_state"] for elem in mini_batch], dtype=torch.float32, device=self.device
         )
         done_batch = to_torch([elem["done"] for elem in mini_batch], dtype=torch.float32, device=self.device)
-
-        reward_batch = reward_batch.unsqueeze(1)
-        done_batch = done_batch.unsqueeze(1)
 
         return state_batch, action_batch, reward_batch, next_state_batch, done_batch
 
