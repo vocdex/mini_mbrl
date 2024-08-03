@@ -21,6 +21,10 @@ virtualenv mbrl_venv --python=python3.8
 ```sh
 source mbrl_venv/bin/activate
 ```
+#### Requirements
+```sh
+pip install "gymnasium[all]"
+t
 
 ## Features
 
