@@ -398,4 +398,4 @@ FodyWeavers.xsd
 *.sln.iml
 
 /papers
-/mini_mbrl
+/mbrl_venv
