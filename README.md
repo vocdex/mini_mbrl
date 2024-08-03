@@ -14,9 +14,12 @@ We need a policy that can be used to collect data. This policy can be a random p
 Now, since we have a policy, we can collect trajectories and write them to a replay buffer. We will use a simple replay buffer for now.
 
 ## Installation
-
+1. Install and activate a new python3.8 virtualenv:
 ```sh
-pip install mini_mbrl
+virtualenv mbrl_venv --python=python3.8
+```
+```sh
+source mbrl_venv/bin/activate
 ```
 
 ## Features
@@ -44,8 +47,6 @@ Papers:
 - [PILCO: A Model-Based and Data-Efficient Approach to Policy Search](https://mlg.eng.cam.ac.uk/pub/pdf/DeiRas11.pdf)
 - [Deep Reinforcement Learning in a Handful of Trials using Probabilistic Dynamics Models](https://arxiv.org/pdf/1805.12114.pdf)
 - Dreamer papers ...
-
-
 
 
 
