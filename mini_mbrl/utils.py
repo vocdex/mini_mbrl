@@ -1,22 +1,13 @@
-import gym
+import gymnasium as gym
 import numpy as np
+import random
+import torch
 
 
-class RandomPolicy:
-    def __init__(self, env):
-        self.env = env
-
-    def __call__(self, *args, **kwargs):
-        return self.env.action_space.sample()
-
-
-class OpenLoopPolicy:
-    """This should return an action when called with an observation."""
-
-    def __init__(self, action_sequence, env: gym.Env):
-        raise NotImplementedError
-
-    def get_action(self, obs, state, **kwargs):
-        raise NotImplementedError
-
+def seed_everything(seed: int, env: gym.Env):
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    env.action_space.seed(seed)
 
