@@ -24,7 +24,11 @@ source mbrl_venv/bin/activate
 #### Requirements
 ```sh
 pip install "gymnasium[all]"
-t
+```
+It seems like there is no need to install mujoco-py. Just install official binaries from mujoco.
+```sh
+pip install mujoco
+```
 
 ## Features
 
