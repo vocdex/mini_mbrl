@@ -47,7 +47,7 @@ class GridWorldEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=np.array([0, 0]),
             high=np.array([self.height-1, self.width-1]),
-            dtype=np.float32,
+            dtype=np.int32,
         )
 
         self.agent_position = self.start_position.copy()
@@ -101,7 +101,7 @@ class GridWorldEnv(gym.Env):
             done = True
             info = "Trap reached"
         else:
-            reward = 0
+            reward = -0.1
             done = False
             info = None
 
