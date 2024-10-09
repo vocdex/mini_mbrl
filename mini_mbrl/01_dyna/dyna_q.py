@@ -268,7 +268,7 @@ if __name__ =="__main__":
     argparser.add_argument("--n_planning_steps", type=int, default=5)
     args = argparser.parse_args()
 
-    from envs.gridworld import GridWorldEnv
+    from ..envs.gridworld import GridWorldEnv
     env = GridWorldEnv(height=args.height, width=args.width, start_position=eval(args.start_position), trap_positions=eval(args.trap_positions), goal_positions=eval(args.goal_positions))
     if args.agent == "sarsa":
         agent = SARSAAgent(env)
