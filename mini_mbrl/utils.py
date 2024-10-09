@@ -4,7 +4,6 @@ import numpy as np
 import os
 
 
-
 def seed_everything(seed: int):
     print(f"Seeding everything with {seed}")
     np.random.seed(seed)
