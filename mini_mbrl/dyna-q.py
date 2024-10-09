@@ -1,8 +1,8 @@
 import numpy as np
-
 import os
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+
 
 class BaseAgent:
     def __init__(self, env, learning_rate=0.1, discount_factor=0.99, epsilon=0.3):
