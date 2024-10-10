@@ -22,10 +22,10 @@ def sample_continuous_policy(action_space, seq_len, dt):
 
 
 def preprocess_frame(frame):
-    """ Crop and resize the frame to 84x84 to remove game status and black lines. """
-    resized_frame = cv2.resize(frame, (96, 96), interpolation=cv2.INTER_AREA)
-    cropped_frame = resized_frame[:-16, :-16, :] # to ensure 64x64
-    return cropped_frame
+    """ Crop and resize the frame to 64x64 to remove game status and black lines. """
+    cropped_frame = frame[:-80, :-80, :] 
+    resized_frame = cv2.resize(cropped_frame, (64, 64), interpolation=cv2.INTER_AREA)
+    return resized_frame
 
 
 def generate_single_rollout(i, seq_len, data_dir, noise_type):
@@ -50,7 +50,6 @@ def generate_single_rollout(i, seq_len, data_dir, noise_type):
         state, reward, done, truncated, _ = env.step(action)
         frame = env.render()  # Get the RGB frame
 
-        # Preprocess the frame to 84x84
         processed_frame = preprocess_frame(frame)
 
         s_rollout.append(processed_frame)  # Save the processed frame
@@ -90,3 +89,4 @@ if __name__ == "__main__":
     parser.add_argument('--processes', type=int, help="Number of processes for parallelism", default=8)
     args = parser.parse_args()
     generate_data(args.rollouts, args.dir, args.policy, args.processes)
+    # generate_single_rollout(0, 1000, 'dataset', 'brown')

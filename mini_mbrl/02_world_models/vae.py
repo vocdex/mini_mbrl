@@ -5,6 +5,8 @@ import torch
 import numpy as np
 import os
 import glob
+import wandb 
+import random
 import matplotlib.pyplot as plt
 from torch import nn
 from torch.nn import functional as F
@@ -13,6 +15,19 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from types_ import *
 from abc import abstractmethod
+from tqdm import tqdm
+
+def seed_everything(seed: int):
+    print(f"Seeding everything with {seed}")
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    os.environ['PYTHONHASHSEED'] = str(seed) # This is to ensure that the hash function is deterministic
+
 
 
 class BaseVAE(nn.Module):
@@ -69,15 +84,13 @@ class VanillaVAE(BaseVAE):
             in_channels = h_dim
 
         self.encoder = nn.Sequential(*modules)
-        self.fc_mu = nn.Linear(256 * 6 * 6, latent_dim)
-        self.fc_var = nn.Linear(256 * 6 * 6, latent_dim)
-
-
+        self.fc_mu = nn.Linear(256 * 4 * 4, latent_dim)
+        self.fc_var = nn.Linear(256 * 4 * 4, latent_dim)
 
         # Build Decoder
         modules = []
 
-        self.decoder_input = nn.Linear(latent_dim, hidden_dims[-1] * 4)
+        self.decoder_input = nn.Linear(latent_dim, hidden_dims[-1] * 16)
 
         hidden_dims.reverse()
 
@@ -118,9 +131,10 @@ class VanillaVAE(BaseVAE):
         :return: (Tensor) List of latent codes
         """
         result = self.encoder(input)
+        # print(result.shape)
         result = torch.flatten(result, start_dim=1)  # Flatten starting from dimension 1
 
-        print(result.shape)  
+        # print(result.shape)  
 
         # Split the result into mu and var components
         # of the latent Gaussian distribution
@@ -137,8 +151,9 @@ class VanillaVAE(BaseVAE):
         :return: (Tensor) [B x C x H x W]
         """
         result = self.decoder_input(z)
-        print(result.shape)
-        result = result.view(-1, 256, 2, 2)
+        # print(f"decoder input shape: {result.shape}")
+        result = result.view(-1, 256, 4, 4)
+        # print(f"decoder input shape view: {result.shape}")
         result = self.decoder(result)
         result = self.final_layer(result)
         return result
@@ -182,7 +197,7 @@ class VanillaVAE(BaseVAE):
         kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim = 1), dim = 0)
 
         loss = recons_loss + kld_weight * kld_loss
-        return {'loss': loss, 'Reconstruction_Loss':recons_loss.detach(), 'KLD':-kld_loss.detach()}
+        return {'loss': loss, 'Reconstruction_Loss':recons_loss.detach(), 'KLD':kld_loss.detach()}
 
     def sample(self,
                num_samples:int,
@@ -213,7 +228,7 @@ class VanillaVAE(BaseVAE):
 
 
 
-class VAEDataset(torch.utils.data.Dataset):
+class VAEDatasetSingle(torch.utils.data.Dataset):
     def __init__(self, data_dir: str, transform = None, action_transform = None, action_return = False):
         self.images = np.load(data_dir)['observations']
         self.actions = np.load(data_dir)['actions']
@@ -237,93 +252,183 @@ class VAEDataset(torch.utils.data.Dataset):
         return sample_image        
 
 
+class VAEDataset(torch.utils.data.Dataset):
+    def __init__(self, data_dir: str, transform=None, action_transform=None, action_return=False):
+        self.data_dir = data_dir
+        self.transform = transform
+        self.action_transform = action_transform
+        self.action_return = action_return
+        
+        # Load all .npz files from the directory
+        self.files = glob.glob(os.path.join(data_dir, '*.npz'))
+        # select only the first 50 files
+        self.files = self.files[:50]
+        self.observations = []
+        self.actions = []
+
+        # Combine all rollouts into one list
+        for file in self.files:
+            data = np.load(file)
+            self.observations.extend(data['observations'])
+            self.actions.extend(data['actions'])
+
+        # Convert lists to numpy arrays for efficient indexing
+        self.observations = np.array(self.observations)
+        self.actions = np.array(self.actions)
+
+    def __len__(self):
+        return len(self.observations)
+
+    def __getitem__(self, idx):
+        sample_image = self.observations[idx]
+        if self.transform:
+            sample_image = self.transform(sample_image)
+        
+        if self.action_return:
+            sample_action = self.actions[idx]
+            if self.action_transform:
+                sample_action = self.action_transform(sample_action)
+            return sample_image, sample_action
+        return sample_image
+
 
 configs = {
     'VAE': VanillaVAE,
     'hidden_dims': [32, 64, 128, 256],
     'latent_dim': 32,
-    'data_dir': 'dataset/rollout_0.npz',
+    'data_dir': 'data/dataset/',
     'model_dir': 'models/',
-    'batch_size': 16,
-    'num_workers': 4,
-    'num_epochs': 100,
+    'batch_size': 32,
+    'num_workers': 6,
+    'num_epochs': 50,
     'learning_rate': 3e-4,
     'action_return': False,
+    'seed': 42
+    
 }
 
-def train_vae(configs):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    vae = configs['VAE'](in_channels = 3, **configs)
-    vae = vae.to(device)
+def train_vae(configs, dataset):
+    wandb.init(project="world_models")
+    wandb.config.update(configs)
+
+    # Use Apple M1 GPU if available
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps")
+    print(f"Using device: {device}")
+    vae = configs['VAE'](in_channels=3, **configs).to(device)
     optimizer = torch.optim.Adam(vae.parameters(), lr=configs['learning_rate'])
 
-    transform = transforms.Compose([
-        transforms.ToTensor()
-    ])
+    dataloader = DataLoader(dataset, batch_size=configs['batch_size'], shuffle=True, num_workers=configs['num_workers'])
 
-    dataset = VAEDataset(data_dir = configs['data_dir'], transform = transform, action_return = configs['action_return'])
-    dataloader = DataLoader(dataset, batch_size = configs['batch_size'], shuffle = True, num_workers = configs['num_workers'])
-
-    for epoch in range(configs['num_epochs']):
+    for epoch in tqdm(range(configs['num_epochs'])):
         vae.train()
-        overall_loss = 0
-        overall_recons_loss = 0
-        overall_kld = 0
+        overall_loss, overall_recons_loss, overall_kld = 0, 0, 0
         for idx, x in enumerate(dataloader):
+            if idx % 100 == 0:
+                print(f"Batch {idx}/{len(dataloader)}")
             x = x.to(device)
             x_hat, _, mu, log_var = vae(x)
-            loss_dict = vae.loss_function(x_hat, x, mu, log_var, M_N = configs['batch_size']/len(dataset))
+            loss_dict = vae.loss_function(x_hat, x, mu, log_var, M_N=configs['batch_size'] / len(dataset))
             optimizer.zero_grad()
             loss_dict['loss'].backward()
             optimizer.step()
+
             overall_loss += loss_dict['loss'].item()
             overall_recons_loss += loss_dict['Reconstruction_Loss'].item()
             overall_kld += loss_dict['KLD'].item()
-        print(f"Epoch {epoch+1}, Loss: {overall_loss/len(dataloader)}, Recon Loss: {overall_recons_loss/len(dataloader)}, KLD: {overall_kld/len(dataloader)}")
+        
+        wandb.log({"Loss": overall_loss / len(dataloader), "Recon Loss": overall_recons_loss / len(dataloader), "KLD": overall_kld / len(dataloader)})
+        print(f"Epoch {epoch + 1}, Loss: {overall_loss / len(dataloader)}, Recon Loss: {overall_recons_loss / len(dataloader)}, KLD: {overall_kld / len(dataloader)}")
     
-    # Save the model
-    os.makedirs(configs['model_dir'], exist_ok = True)
-    torch.save(vae.state_dict(), configs['model_dir'] + 'vae.pth')
+    
+    os.makedirs(configs['model_dir'], exist_ok=True)
+    model_name = f"vae_{configs['num_epochs']}.pth"
+    torch.save(vae.state_dict(), os.path.join(configs['model_dir'], model_name))
 
+def test_vae(configs, dataset):
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps")
+    print(f"Using device: {device}")
+    vae = configs['VAE'](in_channels=3, **configs).to(device)
+    model_name = f"vae_{configs['num_epochs']}.pth"
 
-def test_vae(configs):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    vae = configs['VAE'](in_channels = 3, **configs)
-    vae = vae.to(device)
-    vae.load_state_dict(torch.load(configs['model_dir'] + 'vae.pth'))
+    vae.load_state_dict(torch.load(os.path.join(configs['model_dir'], model_name), map_location=device))
     vae.eval()
-
-    transform = transforms.Compose([
-        transforms.ToTensor()
-    ])
-
-    dataset = VAEDataset(data_dir = configs['data_dir'], transform = transform, action_return = configs['action_return'])
-    dataloader = DataLoader(dataset, batch_size = configs['batch_size'], shuffle = True, num_workers = configs['num_workers'])
+    dataloader = DataLoader(dataset, batch_size=configs['batch_size'], shuffle=True, num_workers=configs['num_workers'])
 
     for idx, x in enumerate(dataloader):
         x = x.to(device)
         x_hat, _, mu, log_var = vae(x)
-        loss_dict = vae.loss_function(x_hat, x, mu, log_var, M_N = configs['batch_size']/len(dataset))
+        loss_dict = vae.loss_function(x_hat, x, mu, log_var, M_N=configs['batch_size'] / len(dataset))
         print(f"Loss: {loss_dict['loss'].item()}, Recon Loss: {loss_dict['Reconstruction_Loss'].item()}, KLD: {loss_dict['KLD'].item()}")
         break
 
-    # Generate samples
-    samples = vae.sample(16, device)
-    samples = samples.permute(0, 2, 3, 1).cpu().detach().numpy()
+    samples = vae.sample(16, device).permute(0, 2, 3, 1).cpu().detach().numpy()
+    samples = (samples + 1) / 2
+
+    plt.figure(figsize=(8, 8))
     for i in range(16):
-        plt.subplot(4, 4, i+1)
+        plt.subplot(4, 4, i + 1)
         plt.imshow(samples[i])
+        plt.axis('off')
     plt.show()
 
 
 
+def inference(configs, dataset):
+    """Show original and reconstructed images together"""
+    num_samples = 8
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+    
+    # Initialize the VAE and load the trained model weights
+    vae = configs['VAE'](in_channels=3, latent_dim=configs['latent_dim'], hidden_dims=configs.get('hidden_dims', None)).to(device)
+    model_name = f"vae_{configs['num_epochs']}.pth"
+    vae.load_state_dict(torch.load(os.path.join(configs['model_dir'], model_name), map_location=device, weights_only=True))
+    vae.eval()
+    
+    # Sample a batch of data from the dataset
+    data_loader = torch.utils.data.DataLoader(dataset, batch_size=num_samples, shuffle=True)
+    data_iter = iter(data_loader)
+    images = next(data_iter)  # Get a batch of images
+    images = images.to(device)
+    
+    # Forward pass through the VAE to get the reconstructed images
+    with torch.no_grad():
+        recons, _, _, _ = vae(images)
+
+    # Move images back to CPU for visualization
+    images = images.cpu()
+    recons = recons.cpu()
+
+    # Plot original and reconstructed images
+    fig, axs = plt.subplots(2, num_samples, figsize=(20, 4))
+    
+    for i in range(num_samples):
+        # Show original images
+        axs[0, i].imshow((images[i].permute(1, 2, 0).numpy() * 0.5 + 0.5).clip(0, 1))
+        axs[0, i].axis('off')
+        # Show reconstructed images
+        axs[1, i].imshow((recons[i].permute(1, 2, 0).numpy() * 0.5 + 0.5).clip(0, 1))
+        axs[1, i].axis('off')
+    
+    axs[0, 0].set_title("Original Images")
+    axs[1, 0].set_title("Reconstructed Images")
+    plt.show()
+
+ 
+
+
 if __name__ == '__main__':
-    # train_vae(configs)
-    # test_vae(configs)
-    vae = configs['VAE'](in_channels = 3, **configs)
-    from torchsummary import summary
-    summary(vae, (3, 84, 84))
-    print(vae)
+    seed_everything(configs['seed'])    
 
+    transforms = transforms.Compose([transforms.ToTensor()])
+    dataset = VAEDataset(configs['data_dir'], action_return=configs['action_return'], transform=transforms)
+    train_size = int(0.7 * len(dataset))
+    test_size = len(dataset) - train_size
+    train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
 
+    print(f"Train size: {len(train_dataset)}, Test size: {len(test_dataset)}")
 
+    # train_vae(configs, train_dataset)
+    # test_vae(configs, test_dataset)
+    inference(configs, test_dataset)
+    
