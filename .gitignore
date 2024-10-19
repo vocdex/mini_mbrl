@@ -399,7 +399,7 @@ FodyWeavers.xsd
 
 papers
 /mbrl_venv
-**/models
+# **/models
 /mbrl
 images
 dataset
