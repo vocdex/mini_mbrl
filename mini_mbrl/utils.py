@@ -13,7 +13,9 @@ def seed_everything(seed: int):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    os.environ['PYTHONHASHSEED'] = str(seed) # This is to ensure that the hash function is deterministic
+    os.environ["PYTHONHASHSEED"] = str(
+        seed
+    )  # This is to ensure that the hash function is deterministic
 
 
 def seed_env(env, seed: int):
@@ -25,7 +27,9 @@ def seed_env(env, seed: int):
     env.observation_space.seed(seed)
 
 
-def to_torch(x, dtype: torch.dtype, device: torch.device = torch.device("cpu")) -> torch.Tensor:
+def to_torch(
+    x, dtype: torch.dtype, device: torch.device = torch.device("cpu")
+) -> torch.Tensor:
     """
     Convert a numpy array or a list to a torch tensor.
     """
@@ -38,6 +42,3 @@ def to_torch(x, dtype: torch.dtype, device: torch.device = torch.device("cpu")) 
         return x.to(device=device, dtype=dtype)
     else:
         print(f"Unknown type {type(x)}")
-
-
-

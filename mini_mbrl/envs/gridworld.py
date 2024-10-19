@@ -36,17 +36,27 @@ class GridWorldEnv(gym.Env):
         Agent has reached a goal or a trap.
     """
 
-    def __init__(self, height=4, width=4, start_position=(0, 0), goal_positions=None, trap_positions=None):
+    def __init__(
+        self,
+        height=4,
+        width=4,
+        start_position=(0, 0),
+        goal_positions=None,
+        trap_positions=None,
+    ):
         self.height = height
         self.width = width
         self.start_position = list(start_position)
-        self.goal_positions = goal_positions or [(height-1, 0), (height-1, width-1)]
-        self.trap_positions = trap_positions or [(height-1, width//2)]
+        self.goal_positions = goal_positions or [
+            (height - 1, 0),
+            (height - 1, width - 1),
+        ]
+        self.trap_positions = trap_positions or [(height - 1, width // 2)]
 
         self.action_space = spaces.Discrete(4)
         self.observation_space = spaces.Box(
             low=np.array([0, 0]),
-            high=np.array([self.height-1, self.width-1]),
+            high=np.array([self.height - 1, self.width - 1]),
             dtype=np.int32,
         )
 
@@ -54,18 +64,26 @@ class GridWorldEnv(gym.Env):
         self.done = False
 
         # Create the map
-        self.map = [['s' if (i, j) == tuple(self.start_position) else ' ' for j in range(self.width)] for i in range(self.height)]
+        self.map = [
+            [
+                "s" if (i, j) == tuple(self.start_position) else " "
+                for j in range(self.width)
+            ]
+            for i in range(self.height)
+        ]
         for i, j in self.goal_positions:
-            self.map[i][j] = 'g'
+            self.map[i][j] = "g"
         for i, j in self.trap_positions:
-            self.map[i][j] = 't'
-        print(f"This is an environment with height {self.height} and width {self.width}")
+            self.map[i][j] = "t"
+        print(
+            f"This is an environment with height {self.height} and width {self.width}"
+        )
 
     def reset(
-            self,
-            *,
-            seed: Optional[int] = None,
-            options: Optional[dict] = None,
+        self,
+        *,
+        seed: Optional[int] = None,
+        options: Optional[dict] = None,
     ):
         """Resets the environment to the initial state."""
         super().reset(seed=seed)
@@ -79,16 +97,23 @@ class GridWorldEnv(gym.Env):
 
         # Update the agent's position based on the action
         if action == 0:
-            self.agent_position[0] = clamp(self.agent_position[0] - 1, 0, self.height - 1)
+            self.agent_position[0] = clamp(
+                self.agent_position[0] - 1, 0, self.height - 1
+            )
         elif action == 1:
-            self.agent_position[1] = clamp(self.agent_position[1] + 1, 0, self.width - 1)
+            self.agent_position[1] = clamp(
+                self.agent_position[1] + 1, 0, self.width - 1
+            )
         elif action == 2:
-            self.agent_position[0] = clamp(self.agent_position[0] + 1, 0, self.height - 1)
+            self.agent_position[0] = clamp(
+                self.agent_position[0] + 1, 0, self.height - 1
+            )
         elif action == 3:
-            self.agent_position[1] = clamp(self.agent_position[1] - 1, 0, self.width - 1)
+            self.agent_position[1] = clamp(
+                self.agent_position[1] - 1, 0, self.width - 1
+            )
         else:
             raise ValueError("Invalid action")
-        
 
         observation = self._observe()
         # Update the reward and done based on the new agent position
