@@ -7,7 +7,6 @@ import cv2
 from torchvision import transforms
 from vae import VanillaVAE
 
-# Define the pre-processing function to match the VAE input requirements
 def preprocess_frame(frame):
     """Crop and resize the frame to 64x64 to remove game status and black lines."""
     cropped_frame = frame[:-80, :-80, :]
@@ -17,8 +16,8 @@ def preprocess_frame(frame):
 # Global variables to store the current action and steering
 current_action = [0, 0, 0]
 steering_value = 0
-STEERING_SPEED = 0.1
-RETURN_SPEED = 0.2
+STEERING_SPEED = 0.5
+RETURN_SPEED = 0.3
 
 def get_action(keys):
     global current_action, steering_value
@@ -49,12 +48,10 @@ def get_action(keys):
     return current_action
 
 def main(configs, record_gif=False):
-    # Initialize the gym environment
     env = gym.make('CarRacing-v3', render_mode='rgb_array')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    # Load the VAE model
     vae = configs['VAE'](in_channels=3, **configs).to(device)
     model_name = f"vae_{configs['num_epochs']}.pth"
     vae.load_state_dict(torch.load(os.path.join(configs['model_dir'], model_name), map_location=device, weights_only=True))
@@ -66,26 +63,21 @@ def main(configs, record_gif=False):
     frames = []
 
     while not done:
-        # Render the environment and preprocess the frame
         frame = env.render()
         preprocessed_frame = preprocess_frame(frame).transpose((2, 0, 1))
         preprocessed_frame = torch.tensor(preprocessed_frame, dtype=torch.float32).unsqueeze(0).to(device) / 255.0
 
-        # Pass the preprocessed frame through the VAE
         with torch.no_grad():
             reconstructed_frame, _, _, _ = vae(preprocessed_frame)
             reconstructed_frame = reconstructed_frame.squeeze(0).cpu().numpy().transpose((1, 2, 0))
 
-        # Convert back to uint8 for display purposes
         original_frame_display = preprocess_frame(frame)
         reconstructed_frame_display = (reconstructed_frame * 255).astype(np.uint8)
 
-        # Stack the frames horizontally for side-by-side display
         combined_frame = np.hstack((original_frame_display, reconstructed_frame_display))
         combined_frame = cv2.putText(combined_frame, 'Original', (10, 10), cv2.FONT_HERSHEY_SIMPLEX, 0.25, (255, 255, 255), 1, cv2.LINE_AA)
         combined_frame = cv2.putText(combined_frame, 'Reconstructed', (original_frame_display.shape[1] + 10, 10), cv2.FONT_HERSHEY_SIMPLEX, 0.25, (255, 255, 255), 1, cv2.LINE_AA)
 
-        # Display the combined frame
         cv2.imshow('Original and Reconstructed Frames', combined_frame)
 
         if record_gif:
@@ -114,7 +106,7 @@ def save_gif(frames, filename):
     import imageio
     imageio.mimsave(filename, frames, fps=30)
 
-# Example configs dictionary (replace with your actual settings)
+
 configs = {
     'VAE': VanillaVAE,
     'num_epochs': 50,
@@ -123,5 +115,8 @@ configs = {
 }
 
 if __name__ == "__main__":
-    main(configs, record_gif=True)
-
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--record_gif", action="store_true", help="Record the frames into a GIF")
+    args = parser.parse_args()
+    main(configs, record_gif=args.record_gif)

@@ -1,5 +1,8 @@
 """Code is imported from https://github.com/AntixK/PyTorch-VAE/tree/master/models/
-Small modifications are made to the original code
+Small modifications are made to the original code: 
+- When logging KL loss, the negative sign is removed.
+- The layer sizes are changed to match the input size of the dataset.
+
 """
 import torch
 import numpy as np
@@ -26,7 +29,7 @@ def seed_everything(seed: int):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    os.environ['PYTHONHASHSEED'] = str(seed) # This is to ensure that the hash function is deterministic
+    os.environ['PYTHONHASHSEED'] = str(seed) 
 
 
 
@@ -151,9 +154,7 @@ class VanillaVAE(BaseVAE):
         :return: (Tensor) [B x C x H x W]
         """
         result = self.decoder_input(z)
-        # print(f"decoder input shape: {result.shape}")
         result = result.view(-1, 256, 4, 4)
-        # print(f"decoder input shape view: {result.shape}")
         result = self.decoder(result)
         result = self.final_layer(result)
         return result
@@ -298,6 +299,7 @@ configs = {
     'latent_dim': 32,
     'data_dir': 'data/dataset/',
     'model_dir': 'models/',
+    'plot_dir': 'plots/',
     'batch_size': 32,
     'num_workers': 6,
     'num_epochs': 50,
@@ -311,7 +313,6 @@ def train_vae(configs, dataset):
     wandb.init(project="world_models")
     wandb.config.update(configs)
 
-    # Use Apple M1 GPU if available
     device = torch.device("cuda" if torch.cuda.is_available() else "mps")
     print(f"Using device: {device}")
     vae = configs['VAE'](in_channels=3, **configs).to(device)
@@ -388,14 +389,12 @@ def inference(configs, dataset):
     # Sample a batch of data from the dataset
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=num_samples, shuffle=True)
     data_iter = iter(data_loader)
-    images = next(data_iter)  # Get a batch of images
+    images = next(data_iter)  
     images = images.to(device)
     
-    # Forward pass through the VAE to get the reconstructed images
     with torch.no_grad():
         recons, _, _, _ = vae(images)
 
-    # Move images back to CPU for visualization
     images = images.cpu()
     recons = recons.cpu()
 
@@ -412,12 +411,21 @@ def inference(configs, dataset):
     
     axs[0, 0].set_title("Original Images")
     axs[1, 0].set_title("Reconstructed Images")
+    os.makedirs(configs['plot_dir'], exist_ok=True)
+    plot_name = "vae_50_reconstruction.png"
+    plt.savefig(os.path.join(configs['plot_dir'], plot_name))
     plt.show()
+  
 
  
 
-
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--train", action="store_true", help="Train the VAE model")
+    parser.add_argument("--test", action="store_true", help="Test the VAE model")
+    parser.add_argument("--plot", action="store_true", help="Plot original and reconstructed images")
+    args = parser.parse_args()
     seed_everything(configs['seed'])    
 
     transforms = transforms.Compose([transforms.ToTensor()])
@@ -426,9 +434,11 @@ if __name__ == '__main__':
     test_size = len(dataset) - train_size
     train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
 
-    print(f"Train size: {len(train_dataset)}, Test size: {len(test_dataset)}")
-
-    # train_vae(configs, train_dataset)
-    # test_vae(configs, test_dataset)
-    inference(configs, test_dataset)
+    if args.train:
+        print(f"Train size: {len(train_dataset)}, Test size: {len(test_dataset)}")
+        train_vae(configs, train_dataset)
+    if args.test:
+        test_vae(configs, test_dataset)
+    if args.plot:
+        inference(configs, test_dataset)
     
