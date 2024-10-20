@@ -1,4 +1,9 @@
 ### VAE
+To generate dataset of random rollouts, run the following command:
+```bash
+cd data
+python generate_dataset.sh
+```
 To reproduce the results of the VAE model, run the following command:
 ```bash
 python vae.py --train --test --plot
