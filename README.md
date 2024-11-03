@@ -1,17 +1,28 @@
 
 # 🔥 MiniMBRL
-MiniMBRL is a minimal model-based reinforcement learning framework.
-
-# Development details
-## 21.12.2023
-We need to start simple. The goal here is to implement minimally possible MBRL algorithm in one script. Later, we can build on top of it.
+MiniMBRL is a minimal implementation of model-based reinforcement learning algorithms. The goal is to implement the most basic version of the algorithms to understand the core concepts and to build on top of them.
 
 
+## Status
+Here is the list of algorithms that I plan to implement:
+#### Dyna-style algorithms:
+- [Dyna: An Integrated Architecture for Learning, Planning, and Reacting](https://dl.acm.org/doi/pdf/10.1145/122344.122377). Paper Notes: [Dyna](notes/01_Dyna.pdf)
+- [World Models](https://arxiv.org/pdf/1803.10122.pdf)
+- [PlaNet: Planning Network](https://arxiv.org/pdf/1811.04551.pdf)
+-  [Dream to Control: Learning Behaviors by Latent Imagination(Dreamer V1)](https://arxiv.org/abs/1912.01603)
+- [Mastering Atari with Discrete World Models(Dreamer V2)](https://arxiv.org/pdf/2010.02193)
+- [DayDreamer: World Models for Physical Robot Learning](https://arxiv.org/pdf/2206.14176)
+- [Planning to Explore via Self-Supervised World Models](https://arxiv.org/pdf/2005.05960)
+
+#### MPC-based algorithms:
+- [Neural Network Dynamics for Model-Based Deep Reinforcement Learning](https://arxiv.org/pdf/1708.02596)
+-  [Deep Reinforcement Learning in a Handful of Trials using Probabilistic Dynamics Models](https://arxiv.org/abs/1805.12114)
 
 
-We need a policy that can be used to collect data. This policy can be a random policy, or a policy that will be trained with model-based RL. We will use a random policy for now.
-
-Now, since we have a policy, we can collect trajectories and write them to a replay buffer. We will use a simple replay buffer for now.
+#### Newer algorithms:
+- [Transformers are Sample-Efficient World Models](https://openreview.net/pdf?id=vhFu1Acb0xb)
+- [The Benefits of Model-Based Generalization in Reinforcement Learning](https://arxiv.org/pdf/2211.02222) (ICML 2024)
+- [Facing Off World Model Backbones: RNNs, Transformers, and S4](https://proceedings.neurips.cc/paper_files/paper/2023/file/e6c65eb9b56719c1aa45ff73874de317-Paper-Conference.pdf) (NeurIPS 2023)
 
 ## Installation
 1. Install and activate a new python3.8 virtualenv:
@@ -24,40 +35,5 @@ source mbrl_venv/bin/activate
 #### Requirements
 ```sh
 pip install "gymnasium[all]"
-```
-It seems like there is no need to install mujoco-py. Just install official binaries from mujoco.
-```sh
 pip install mujoco
 ```
-
-## Features
-
-MiniMBRL aims to provide minimal implementations of the commonly used model-based RL algorithms. It is designed to be easy to use and easy to extend.
-
-### `mini_mbrl.Controller`
-
-```python
-from mini_mbrl.controller import Controller
-controller = Controller(algo="mpc_with_cem", env=env, model=model, **kwargs)
-action = controller.get_action(observation)
-```
-## Next Steps
-Implement the following at this order
-1. Alternating between model learning and planning loop
-2. Gradient-free planning algorithms: Random Shooting, Cross-Entropy Method, iCEM
-3. Closed-loop planning with MPC, and Open-loop
-4. Model learning: deterministic vs probabilistic models, ensembles, uncertainty estimation(aleatoric vs epistemic)
-5. Gradient-based optimization methods.
-
-Papers:
-- [Neural Network Dynamics for Model-Based Deep Reinforcement Learning with Model-Free Fine-Tuning](https://arxiv.org/pdf/1708.02596.pdf)
-- [Deep Dynamics Models for Learning Dexterous Manipulation](https://proceedings.mlr.press/v100/nagabandi20a/nagabandi20a.pdf)
-- [PILCO: A Model-Based and Data-Efficient Approach to Policy Search](https://mlg.eng.cam.ac.uk/pub/pdf/DeiRas11.pdf)
-- [Deep Reinforcement Learning in a Handful of Trials using Probabilistic Dynamics Models](https://arxiv.org/pdf/1805.12114.pdf)
-- Dreamer papers ...
-
-
-
-## Questions
-
-Please file an [issue on Github](https://github.com/vocdex/mini_mbrl/issues).
