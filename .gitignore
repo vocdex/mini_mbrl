@@ -407,3 +407,6 @@ dataset_copy
 dataset_copy.zip
 
 wandb
+model_checkpoints/
+plots/
+*.pth
