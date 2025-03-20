@@ -28,8 +28,8 @@ Below is a structured list of algorithms that will be implemented, organized by 
 
 | Paper | Link | Personal Notes | Status |
 |-------|------|---------------|--------|
-| Dyna: An Integrated Architecture for Learning, Planning, and Reacting | [Link](https://dl.acm.org/doi/pdf/10.1145/122344.122377) | [Dyna Notes](notes/01_Dyna.pdf) | Planned |
-| World Models | [Link](https://arxiv.org/pdf/1803.10122.pdf) | - | Planned |
+| Dyna: An Integrated Architecture for Learning, Planning, and Reacting | [Link](https://dl.acm.org/doi/pdf/10.1145/122344.122377) | [Dyna Notes](notes/01_Dyna.pdf) | Done |
+| World Models | [Link](https://arxiv.org/pdf/1803.10122.pdf) | - | Ongoing|
 | PlaNet: Planning Network | [Link](https://arxiv.org/pdf/1811.04551.pdf) | - | Planned |
 | Dream to Control: Learning Behaviors by Latent Imagination (Dreamer V1) | [Link](https://arxiv.org/abs/1912.01603) | - | Planned |
 | Mastering Atari with Discrete World Models (Dreamer V2) | [Link](https://arxiv.org/pdf/2010.02193) | - | Planned |
