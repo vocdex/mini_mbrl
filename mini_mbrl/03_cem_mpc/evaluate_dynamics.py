@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from controllers import CEMMPCController
 from dynamics import MLPDynamicsModel
-from utils import seed_everything
+from utils import load_model_from_checkpoint, seed_env, seed_everything
 
 
 def plot_trajectory_comparison(
@@ -42,22 +42,6 @@ def plot_trajectory_comparison(
         print(f"Saved plot to {save_path}")
 
     plt.show()
-
-
-def load_model_from_checkpoint(checkpoint_path: str, state_dim: int, action_dim: int) -> MLPDynamicsModel:
-    """Load a dynamics model from a checkpoint."""
-    dynamics_model = MLPDynamicsModel(state_dim, action_dim)
-    checkpoint = torch.load(checkpoint_path)
-
-    # Handle different checkpoint formats
-    if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
-        dynamics_model.model.load_state_dict(checkpoint["model_state_dict"])
-    else:
-        # Assume checkpoint is the state dict itself
-        dynamics_model.model.load_state_dict(checkpoint)
-
-    dynamics_model.model.eval()
-    return dynamics_model
 
 
 def predict_trajectory(
@@ -107,7 +91,7 @@ def collect_evaluation_rollouts(
         print(f"Collecting rollout {i+1}/{num_rollouts}")
 
         for attempt in range(max_attempts_per_rollout):
-            initial_state, _ = env.reset()
+            initial_state, _ = env.reset(seed=42)
             states = [initial_state.copy()]
             actions = []
 
@@ -170,7 +154,7 @@ def load_rollouts(load_path: str) -> List[Dict]:
             "initial_state": np.array(rollout["initial_state"]),
             "states": np.array(rollout["states"]),
             "actions": np.array(rollout["actions"]),
-            "horizon": rollout["horizon"],
+            "horizon": rollout["length"],
         }
         rollouts.append(deserialized_rollout)
 
@@ -241,7 +225,8 @@ def main():
     action_dim = env.action_space.shape[0]
 
     # Seed everything
-    seed_everything(40)
+    seed_everything(42)
+    seed_env(env, 42)
 
     # Load dynamics model
     dynamics_model = load_model_from_checkpoint(args.checkpoint, state_dim, action_dim)
@@ -249,7 +234,7 @@ def main():
     if args.collect_new_rollouts:
         # Create controller
         controller = CEMMPCController(
-            dynamics_model=dynamics_model.model,
+            # dynamics_model=dynamics_model.model,
             env=env,
             cem_horizon=30,  # Controller planning horizon (different from rollout horizon)
         )

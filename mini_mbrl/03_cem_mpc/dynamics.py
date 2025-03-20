@@ -64,7 +64,7 @@ class MLPDynamicsModel:
         if action.dim() == 1:
             action = action.unsqueeze(0)
 
-        return self.model(state, action)
+        return self.model(state, action)  # Torch Tensor: [batch_size, state_dim]
 
     def predict_n_steps(self, states, action_sequences, n):
         """Use the model to predict n steps into the future.

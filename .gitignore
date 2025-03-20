@@ -410,3 +410,5 @@ wandb
 model_checkpoints/
 plots/
 *.pth
+*.mp4
+data/
