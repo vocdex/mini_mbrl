@@ -3,7 +3,7 @@
 MiniMBRL is a minimal implementation of model-based reinforcement learning algorithms. The goal is to implement the most basic version of the algorithms to understand the core concepts and to build on top of them.
 
 <div align="center">
-    <img src="mini_mbrl/02_world_models/plots/car_racing.gif" width="400" alt="Pong Wars" />
+    <img src="mini_mbrl/02_world_models/plots/car_racing.gif" width="800" alt="Pong Wars" />
 </div>
 
 ## Installation
