@@ -412,3 +412,4 @@ plots/
 *.pth
 *.mp4
 data/
+models/
