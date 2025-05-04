@@ -34,20 +34,20 @@ class Config:
 
         # Model parameters
         self.latent_dim = 128
-        self.num_embeddings = 512  # Size of the codebook (K)
+        self.num_embeddings = 256 # Size of the codebook (K)
         self.commitment_cost = 0.25  # Beta in paper
 
         # Training parameters
-        self.learning_rate = 1e-3
-        self.num_epochs = 50
+        self.learning_rate =  3e-4
+        self.num_epochs = 100
         self.log_interval = 100
         self.save_interval = 10
-        self.lr_patience = 3  # Number of epochs to wait before reducing learning rate
-        self.lr_factor = 0.5  # Factor by which to reduce learning rate
+        self.lr_patience = 30 # Number of epochs to wait before reducing learning rate
+        self.lr_factor = 0.4  # Factor by which to reduce learning rate
 
         # Paths
-        self.save_dir = Path("./models")
-        self.save_dir.mkdir(exist_ok=True)
+        self.save_dir = Path(f"./models/{wandb.run.name if wandb.run else 'default_run'}")
+        self.save_dir.mkdir(parents=True, exist_ok=True)
 
     def to_dict(self):
         return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
@@ -353,6 +353,7 @@ def train(model, train_loader, test_loader, optimizer, scheduler, config):
 
         # Step the scheduler (adjust learning rate based on validation loss)
         scheduler.step(test_loss)
+        print(f"Learning rate adjusted to: {scheduler.get_last_lr()[0]:.6f}")
 
         # Save model if it's the best so far
         if test_loss < best_loss:
@@ -436,43 +437,34 @@ def check_model_dimensions(config):
 
 def main():
     """Main function to run the training pipeline"""
-    # Create config
     config = Config()
     cfg = Box(config.to_dict())
 
-    # Initialize wandb
     wandb.init(
         project=cfg.project_name,
         config=cfg.to_dict(),
         name=f"vqvae-{cfg.dataset}-{cfg.latent_dim}d-{cfg.num_embeddings}emb",
     )
 
-    # Set seed for reproducibility
     seed_everything(cfg.seed)
 
-    # Get data loaders
     train_loader, test_loader = get_data_loaders(cfg)
 
-    # Create model
     model = VQVAE(cfg).to(cfg.device)
     wandb.watch(model, log="all")
 
-    # Create optimizer and learning rate scheduler
     optimizer = optim.Adam(model.parameters(), lr=cfg.learning_rate)
-    scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=cfg.lr_factor, patience=cfg.lr_patience, verbose=True)
+    scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=cfg.lr_factor, patience=cfg.lr_patience)
 
-    # Train the model
     print(f"Starting training on {cfg.device}")
     model = train(model, train_loader, test_loader, optimizer, scheduler, cfg)
 
-    # Finish wandb run
     wandb.finish()
 
     return model
 
 
 if __name__ == "__main__":
-    # Create config
     config = Config()
     cfg = Box(config.to_dict())
 
@@ -480,4 +472,6 @@ if __name__ == "__main__":
     check_model_dimensions(cfg)
 
     # Run main training
-    # main()
+    main()
+
+

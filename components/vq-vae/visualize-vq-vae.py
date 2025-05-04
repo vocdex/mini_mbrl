@@ -496,7 +496,6 @@ def interactive_latent_exploration(model, device, grid_size=10):
             # Reshape indices to match spatial dimensions
             indices_spatial = indices.reshape(1, grid_size, grid_size)
 
-            # Get embeddings
             z_q = model.vq_layer.embedding(indices.to(device)).view(1, -1, grid_size, grid_size)
             z_q = z_q.permute(0, 1, 2, 3)  # [B, D, H, W]
 
@@ -528,11 +527,9 @@ def interactive_latent_exploration(model, device, grid_size=10):
 def example_usage():
     """Example of how to use the visualization functions with a trained model"""
 
-    # Load config and create model
     config = Config()
     cfg = Box(config.to_dict())
 
-    # Create model
     model = VQVAE(cfg).to(cfg.device)
 
     # Try to load a saved model, but continue with randomly initialized weights if file not found
@@ -545,10 +542,8 @@ def example_usage():
         print("NOTE: Results will not be meaningful without a trained model.")
         print("Train the model first or specify the correct path to a saved model.")
 
-    # Get data loaders
     train_loader, test_loader = get_data_loaders(cfg)
 
-    # Encode dataset
     print("Encoding a subset of the dataset...")
     indices, encodings, images = encode_dataset(model, test_loader, cfg.device, num_batches=10)
 
@@ -560,22 +555,22 @@ def example_usage():
     print("\nVisualizing latent space using dimensionality reduction...")
     visualize_latent_space(encodings, indices, num_samples=500)
 
-    # # Visualize spatial distribution of codes
-    # print("\nVisualizing spatial arrangement of latent codes...")
-    # h, w = cfg.image_size // 8, cfg.image_size // 8  # Latent space dimensions
-    # visualize_spatial_codes(indices, (h, w))
+    # Visualize spatial distribution of codes
+    print("\nVisualizing spatial arrangement of latent codes...")
+    h, w = cfg.image_size // 8, cfg.image_size // 8  # Latent space dimensions
+    visualize_spatial_codes(indices, (h, w))
 
-    # # Latent arithmetic
-    # print("\nPerforming operations in latent space...")
-    # latent_arithmetic(model, test_loader, cfg.device, n_samples=3)
+    # Latent arithmetic
+    print("\nPerforming operations in latent space...")
+    latent_arithmetic(model, test_loader, cfg.device, n_samples=3)
 
-    # # Visualize codebook vectors
-    # print("\nVisualizing the learned codebook vectors...")
-    # visualize_codebook_vectors(model)
+    # Visualize codebook vectors
+    print("\nVisualizing the learned codebook vectors...")
+    visualize_codebook_vectors(model)
 
-    # # Interactive exploration
-    # print("\nStarting interactive latent space exploration...")
-    # interactive_latent_exploration(model, cfg.device)
+    # Interactive exploration
+    print("\nStarting interactive latent space exploration...")
+    interactive_latent_exploration(model, cfg.device)
 
 
 if __name__ == "__main__":
