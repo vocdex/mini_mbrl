@@ -1,4 +1,8 @@
 # VQ-VAE
+## TLDR
+VQ-VAE is a generative model that combines the strengths of VAEs and vector quantization. It uses discrete latent variables to improve reconstruction quality instead of imposing a Gaussian prior on the latent space. The prior is later learned using an autoregressive model (PixelCNN) to capture complex dependencies between codebook vectors. One can combine GANs with VQ-VAE to get the best of both worlds: high-quality images and discrete latent space. The model is trained using a combination of reconstruction loss, codebook loss, and commitment loss. The straight-through estimator allows for backpropagation through the quantization step, making it possible to train the model end-to-end.
+
+### Introduction
 Recently, VQ-VAEs are coming up every interesting work that I read : diffusion models(stable diffusion) and model-based RL (DreamerV2, Genie,) or video generation (VideoGPT). So, it's high time to get back to the basics and understand what makes VQ-VAEs better than normal VAEs in practice.
 
 The paper "Neural Discrete Representation Learning"(van den Oord, Deepmind) introduced VQ-VAEs in 2017. The key innovation of VQ-VAE is the introduction of a vector quantization layer between the encoder and decode, which maps continuous representations to a discrete codebook of vectors.
@@ -56,4 +60,29 @@ Despite being mathematically "incorrect," this approach is effective in practice
 - The approximation introduces a form of implicit regularization
 - As training progresses, encoder outputs naturally move closer to codebook vectors, making the approximation increasingly accurate
 
-VQ-VAE's success in diverse applications from image generation to reinforcement learning demonstrates the value of discrete latent representations in capturing complex data distributions and enabling more structured representations.
+
+### KL term in VAE objective becomes 0
+Remember in VAE, we have two terms in the objective:
+$$Loss=\text{Reconstruction loss}+ D_{KL}(q(z|x)||p(z))$$
+where $q(z|x)$ is the encoder and $p(z)$ is prior.
+In VQ-VAE, the encoder outputs deterministic vectors, not distributions. The encoder output $z_e$ is mapped to the nearest codebook vector $z_q=e_k$. The prior is uniform over all codebook vectors.
+Therefore, for a discrete distribution with a delta function at one point and a uniform prior, the KL divergence becomes a constant:
+$$D_{KL}(q(z|x)||p(z))=\sum_{j=1}^Kq(z=z_k|x)\log \frac{q(z=z_k|x)}{p(z=z_k)} =1\times \log \frac{1}{1/K}$$
+Since posterior is 0 for all $j\neq k$, all terms in the sum are zero except for $j=k$.
+This allows VQ-VAE to focus on reconstruction quality without being constrained to follow a specific prior distribution in the latent space.
+### Learning the Prior
+Once VQ-VAE is fully trained, one can abandon the uniform prior imposed at training time and learn a new, updated prior $p(z)$ over the latents.
+
+So, why do we need to abandon the uniform prior? Because in reality, certain codebook vectors are used more frequently than others for a given dataset. With a uniform prior, generating samples would mean randomly selecting codebook vectors with equal probability, which would produce poor results.
+
+In the paper, they use PixelCNN autoregressive model to capture more complex dependencies between codebook vectors, treating them as discrete tokens.
+$$p(z)=p(z_1)p(z_2|z_1)p(z_3|z_1,z_2)...$$
+
+Actual training process looks is simple:
+- take the original dataset used in VQ-VAE training
+- pass each image through the trained VQ-VAE encoder and get its vector quantized latent index grids
+- treat the dataset of latent index grids as training data for the PixelCNN
+- maximize the log-likelihood of the observed latent index girds under PixelCNN model.
+
+
+This outputs a trained PixelCNN models that captures the true distribution of $p(z)$ of the dataset (instead of uniform). This new prior allows to generate a new data sample that looks like it came from the original data distribution. To do so, we perform **ancestral sampling** to finally get a complete grid **z** of discrete latent indices. Finally, we can pass this grid indices to codebook quantization layer and get its quantized vectors, which will be passed to the decoder to get the final output.
