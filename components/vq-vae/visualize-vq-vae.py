@@ -5,7 +5,7 @@ import torch
 import torchvision
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
-from vq_vae import VQVAE, Box, Config, get_data_loaders
+from vqvae_cifar10 import VQVAE, Box, Config, get_data_loaders
 
 
 def encode_dataset(model, data_loader, device, num_batches=None):
