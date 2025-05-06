@@ -30,16 +30,16 @@ class Config:
         self.dataset = "cifar10"
         self.image_size = 32
         self.channels = 3
-        self.batch_size = 128
+        self.batch_size = 32 # 128 prev
 
         # Model parameters
-        self.latent_dim = 128
-        self.num_embeddings = 256 # Size of the codebook (K)
-        self.commitment_cost = 0.25  # Beta in paper
+        self.latent_dim = 256
+        self.num_embeddings = 128 # Size of the codebook (K)
+        self.commitment_cost = 1  # Beta in paper
 
         # Training parameters
         self.learning_rate =  3e-4
-        self.num_epochs = 100
+        self.num_epochs = 200
         self.log_interval = 100
         self.save_interval = 10
         self.lr_patience = 30 # Number of epochs to wait before reducing learning rate
@@ -150,9 +150,27 @@ class VectorQuantizer(nn.Module):
         return z_q, loss, encoding_indices
 
 
+class ResidualBlock(nn.Module):
+    """
+    Residual block for VQVAE
+    """
+    def __init__(self, channels):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1)
+        self.relu = nn.ReLU()
+        
+    def forward(self, x):
+        residual = x
+        x = self.relu(self.conv1(x))
+        x = self.conv2(x)
+        x += residual  # Skip connection
+        x = self.relu(x)
+        return x
+
 class VQVAE(nn.Module):
     """
-    Vector Quantized Variational Autoencoder
+    Vector Quantized Variational Autoencoder with Residual Connections
 
     Attributes:
         encoder: Encoder network
@@ -163,34 +181,79 @@ class VQVAE(nn.Module):
     def __init__(self, config):
         super(VQVAE, self).__init__()
         self.config = config
-
+        
+        # Number of residual blocks per layer
+        num_res_blocks = 2
+        
         # Encoder
-        self.encoder = nn.Sequential(
-            nn.Conv2d(config.channels, 32, kernel_size=4, stride=2, padding=1),  # 32x32x3 -> 16x16x32
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),  # 16x16x32 -> 8x8x64
-            nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),  # 8x8x64 -> 4x4x128
-            nn.ReLU(),
-            nn.Conv2d(128, config.latent_dim, kernel_size=1),  # 4x4x128 -> 4x4xlatent_dim(128) # pass it to VQ layer
-        )
-
+        self.encoder_layers = nn.ModuleList([
+            # Initial convolution
+            nn.Sequential(
+                nn.Conv2d(config.channels, 32, kernel_size=4, stride=2, padding=1),  # 32x32x3 -> 16x16x32
+                nn.ReLU()
+            ),
+            # First residual stage
+            nn.Sequential(
+                *[ResidualBlock(32) for _ in range(num_res_blocks)],
+                nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),  # 16x16x32 -> 8x8x64
+                nn.ReLU()
+            ),
+            # Second residual stage
+            nn.Sequential(
+                *[ResidualBlock(64) for _ in range(num_res_blocks)],
+                nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),  # 8x8x64 -> 4x4x128
+                nn.ReLU()
+            ),
+            # Final convolution to latent space
+            nn.Sequential(
+                *[ResidualBlock(128) for _ in range(num_res_blocks)],
+                nn.Conv2d(128, config.latent_dim, kernel_size=1)  # 4x4x128 -> 4x4xlatent_dim
+            )
+        ])
+                
         # Vector Quantization
         self.vq_layer = VectorQuantizer(
             config.num_embeddings, config.latent_dim, commitment_cost=config.commitment_cost
         )
-
+        
         # Decoder
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(config.latent_dim, 128, kernel_size=1),  # 4x4xlatent_dim(128) -> 4x4x128
-            nn.ReLU(),
-            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),  # 4x4x128 -> 8x8x64
-            nn.ReLU(),
-            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),  # 8x8x64 -> 16x16x32
-            nn.ReLU(),
-            nn.ConvTranspose2d(32, config.channels, kernel_size=4, stride=2, padding=1),  # 16x16x32 -> 32x32x3
-            nn.Tanh(),  # Output values in range [-1, 1]
-        )
+        self.decoder_layers = nn.ModuleList([
+            # Initial convolution from latent space
+            nn.Sequential(
+                nn.ConvTranspose2d(config.latent_dim, 128, kernel_size=1),  # 4x4xlatent_dim -> 4x4x128
+                nn.ReLU(),
+                *[ResidualBlock(128) for _ in range(num_res_blocks)]
+            ),
+            # First upsampling stage
+            nn.Sequential(
+                nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),  # 4x4x128 -> 8x8x64
+                nn.ReLU(),
+                *[ResidualBlock(64) for _ in range(num_res_blocks)]
+            ),
+            # Second upsampling stage
+            nn.Sequential(
+                nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),  # 8x8x64 -> 16x16x32
+                nn.ReLU(),
+                *[ResidualBlock(32) for _ in range(num_res_blocks)]
+            ),
+            # Final convolution to output
+            nn.Sequential(
+                nn.ConvTranspose2d(32, config.channels, kernel_size=4, stride=2, padding=1),  # 16x16x32 -> 32x32x3
+                nn.Tanh()  # Output values in range [-1, 1]
+            )
+        ])
+
+    def encoder(self, x):
+        """Forward pass through encoder with residual blocks"""
+        for layer in self.encoder_layers:
+            x = layer(x)
+        return x
+        
+    def decoder(self, x):
+        """Forward pass through decoder with residual blocks"""
+        for layer in self.decoder_layers:
+            x = layer(x)
+        return x
 
     def forward(self, x):
         """
@@ -228,6 +291,7 @@ class VQVAE(nn.Module):
         self.to(self.config.device)  # Move to the appropriate device
         print(f"Model loaded from {path} and moved to {self.config.device}")
 
+        
 
 def vqvae_loss(recon_x, x, vq_loss):
     """Calculate VQ-VAE loss"""
@@ -445,6 +509,9 @@ def main():
         config=cfg.to_dict(),
         name=f"vqvae-{cfg.dataset}-{cfg.latent_dim}d-{cfg.num_embeddings}emb",
     )
+    # Set the save directory for the model
+    cfg.save_dir = Path(f"./models/{wandb.run.name}")
+    cfg.save_dir.mkdir(parents=True, exist_ok=True)
 
     seed_everything(cfg.seed)
 
