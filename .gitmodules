@@ -1,0 +1,3 @@
+[submodule "components/vq-vae/components/vq-vae/vqtorch"]
+	path = components/vq-vae/components/vq-vae/vqtorch
+	url = https://github.com/vocdex/vqtorch

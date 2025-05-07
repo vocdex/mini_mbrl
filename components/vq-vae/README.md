@@ -86,3 +86,12 @@ Actual training process looks is simple:
 
 
 This outputs a trained PixelCNN models that captures the true distribution of $p(z)$ of the dataset (instead of uniform). This new prior allows to generate a new data sample that looks like it came from the original data distribution. To do so, we perform **ancestral sampling** to finally get a complete grid **z** of discrete latent indices. Finally, we can pass this grid indices to codebook quantization layer and get its quantized vectors, which will be passed to the decoder to get the final output.
+
+
+### Training Tips
+
+- Use high quality implemeentation VectorQuant from [vqtorch](https://github.com/vocdex/vqtorch) library.
+- Using a large codebook size (e.g., 1024 or more) helps with reconstruction loss(maybe with quality too).
+- Disentangled codebook vectors obtained using TSNE indicates that the model has learned meaningful representations. The model might still suffer from blurry reconstructions, but the codebook vectors are well-separated and this is usually not related to each other.
+- Simple MSE loss is never sufficient for high-quality image generation. Use perceptual loss (e.g., VGG loss) or adversarial loss (GAN) to improve the quality of generated images.
+

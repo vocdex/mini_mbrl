@@ -413,3 +413,4 @@ plots/
 *.mp4
 data/
 models/
+models_vqvae/
